@@ -13,6 +13,7 @@ import requests
 import json
 import datetime
 from django.core.urlresolvers import reverse
+from django.conf import settings
 
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
@@ -40,6 +41,16 @@ def my_callback(sender, user, course_grade, course_key, deadline, **kwargs):
                     badge_template_id = json.loads(course.badge_template)[0]
                     acclaim_api.issue_badge(usr, badge_template_id)
 
+
+class OpenedXEncryptedTextField(EncryptedTextField):
+    def __init__(self, *args, **kwargs):
+        openedx_keydir = getattr(settings, 'AUTH_TOKENS', {}).get('ENCRYPTED_FIELDS_KEYDIR')
+        django_keydir = getattr(settings, 'ENCRYPTED_FIELDS_KEYDIR', openedx_keydir)
+
+        self.keydir = django_keydir
+        super(OpenedXEncryptedTextField, self).__init__(*args, **kwargs)
+
+
 class SingletonModel(models.Model):
     class Meta:
         abstract = True
@@ -56,7 +67,7 @@ class SingletonModel(models.Model):
             return cls()
 
 class AcclaimToken(SingletonModel, TimeStampedModel):
-    auth_token = EncryptedTextField()
+    auth_token = OpenedXEncryptedTextField()
     organization_id = models.UUIDField()
 
     PROD = 'youracclaim.com [Production]'
